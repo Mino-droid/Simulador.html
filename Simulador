@@ -19,7 +19,8 @@
             const [annualRate, setAnnualRate] = React.useState('');
             const [loanTermMonths, setLoanTermMonths] = React.useState('');
             const [frequency, setFrequency] = React.useState('monthly');
-            const [lifeInsuranceRate, setLifeInsuranceRate] = React.useState(''); // Estado para la tasa de seguro (ej. 0.065)
+            // Estado para la tasa del seguro de vida anual (ej. 0.065)
+            const [lifeInsuranceRate, setLifeInsuranceRate] = React.useState(''); 
             const [installment, setInstallment] = React.useState(null);
             const [error, setError] = React.useState('');
 
@@ -43,52 +44,57 @@
                 const parsedPrincipal = parseFloat(principal);
                 const parsedAnnualRate = parseFloat(annualRate);
                 const parsedLoanTermMonths = parseFloat(loanTermMonths);
-                // Convertir la tasa de seguro a decimal. Si no hay valor, asumimos 0.
-                const parsedLifeInsuranceRate = parseFloat(lifeInsuranceRate || 0) / 100; // Dividir por 100 para convertir 0.065 en 0.00065
+                // Convertir la tasa de seguro ingresada (ej. 0.065) a su valor decimal real (0.00065)
+                const parsedLifeInsuranceRate = parseFloat(lifeInsuranceRate || 0) / 100; 
 
                 // --- Validaciones de entrada ---
-                if (isNaN(parsedPrincipal) || isNaN(parsedAnnualRate) || isNaN(parsedLoanTermMonths) ||
-                    parsedPrincipal <= 0 || parsedAnnualRate < 0 || parsedLoanTermMonths <= 0) {
-                    if (principal || annualRate || loanTermMonths) { // Solo mostrar error si hay algo escrito
-                         setError('Por favor, ingresa valores válidos y positivos para el monto, la tasa y el plazo.');
-                    }
+                if (isNaN(parsedPrincipal) || parsedPrincipal <= 0) {
+                    if (principal) setError('Ingresa un monto de préstamo válido y positivo.');
+                    return;
+                }
+                if (isNaN(parsedAnnualRate) || parsedAnnualRate < 0) {
+                    if (annualRate) setError('Ingresa una tasa de interés válida y no negativa.');
+                    return;
+                }
+                if (isNaN(parsedLoanTermMonths) || parsedLoanTermMonths <= 0) {
+                    if (loanTermMonths) setError('Ingresa un plazo en meses válido y positivo.');
                     return;
                 }
                 if (isNaN(parsedLifeInsuranceRate) || parsedLifeInsuranceRate < 0) {
-                    setError('La tasa del seguro de vida debe ser un número positivo o cero.');
+                    if (lifeInsuranceRate) setError('La tasa del seguro de vida debe ser un número positivo o cero.');
                     return;
                 }
 
                 let ratePerPeriod;
                 let totalPeriods;
-                let insuranceDivider; // Divisor para ajustar la tasa anual del seguro a la frecuencia de pago
+                let insuranceDivider; // Divisor para ajustar la tasa ANUAL del seguro a la frecuencia de pago
 
                 // --- Lógica de cálculo basada en la frecuencia ---
                 switch (frequency) {
                     case 'monthly':
                         ratePerPeriod = (parsedAnnualRate / 12) / 100;
                         totalPeriods = parsedLoanTermMonths;
-                        insuranceDivider = 12; // 12 meses en un año
+                        insuranceDivider = 12; // Hay 12 meses en un año, para una tasa anual de seguro
                         break;
                     case 'bimestral':
                         ratePerPeriod = (parsedAnnualRate / 6) / 100;
                         totalPeriods = parsedLoanTermMonths / 2;
-                        insuranceDivider = 6; // 6 bimestres en un año
+                        insuranceDivider = 6; // Hay 6 bimestres en un año
                         break;
                     case 'trimestral':
                         ratePerPeriod = (parsedAnnualRate / 4) / 100;
                         totalPeriods = parsedLoanTermMonths / 3;
-                        insuranceDivider = 4; // 4 trimestres en un año
+                        insuranceDivider = 4; // Hay 4 trimestres en un año
                         break;
                     case 'semestral':
                         ratePerPeriod = (parsedAnnualRate / 2) / 100;
                         totalPeriods = parsedLoanTermMonths / 6;
-                        insuranceDivider = 2; // 2 semestres en un año
+                        insuranceDivider = 2; // Hay 2 semestres en un año
                         break;
                     case 'anual':
                         ratePerPeriod = (parsedAnnualRate / 1) / 100;
                         totalPeriods = parsedLoanTermMonths / 12;
-                        insuranceDivider = 1; // 1 año en un año
+                        insuranceDivider = 1; // Hay 1 año en un año
                         break;
                     default:
                         setError('Frecuencia de pago no válida.');
@@ -96,30 +102,30 @@
                 }
 
                 // Validar que el número de periodos sea un número entero y positivo
+                // (Ej: 24 meses / 2 bimestres = 12 bimestres. Si fuera 25 meses / 2, daría 12.5, lo cual es inválido)
                 if (totalPeriods <= 0 || totalPeriods % 1 !== 0) {
-                     setError('El plazo del préstamo no es compatible con la frecuencia de pago seleccionada. Asegúrate de que los meses sean divisibles por la frecuencia (ej: para bimestral, el plazo en meses debe ser par).');
+                     setError('El plazo en meses no es compatible con la frecuencia de pago seleccionada. Asegúrate de que los meses sean divisibles por la duración del periodo (ej: para bimestral, el plazo debe ser par).');
                      return;
                 }
 
-                // Calcular la cuota del préstamo principal
+                // Calcular la cuota del préstamo principal (amortización)
                 const calculatedLoanInstallment = calculateInstallment(parsedPrincipal, ratePerPeriod, totalPeriods);
                 
-                // Calcular el costo del seguro de vida por periodo
-                // (Tasa de Seguro Anual * Monto Principal) / (Número de periodos de seguro en un año)
+                // Calcular el costo del seguro de vida por cada periodo de pago
+                // (Tasa de Seguro ANUAL * Monto Principal) / (Número de periodos de seguro en un año según frecuencia)
                 const costLifeInsurancePerPeriod = (parsedLifeInsuranceRate * parsedPrincipal) / insuranceDivider;
 
                 // Sumar la cuota del préstamo y el costo del seguro
                 const totalInstallment = calculatedLoanInstallment + costLifeInsurancePerPeriod;
 
                 setInstallment(Math.round(totalInstallment)); // Redondear el total final
-
-            }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceRate]); // Dependencias para recalcular
+            }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceRate]); // Dependencias para recalcular al cambiar cualquier valor
 
             return (
-                // --- Colores Verde y Naranja ---
-                <div className="min-h-screen bg-gradient-to-br from-emerald-100 to-orange-200 flex items-center justify-center p-4 font-sans antialiased">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-emerald-300">
-                        <h1 className="text-3xl font-bold text-center text-emerald-800 mb-6">
+                // Colores azules originales
+                <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 font-sans antialiased">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-blue-200">
+                        <h1 className="text-3xl font-bold text-center text-blue-800 mb-6">
                             Simulador de Crédito
                         </h1>
                         <div className="space-y-4">
@@ -132,7 +138,7 @@
                                     id="principal"
                                     value={principal}
                                     onChange={(e) => setPrincipal(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 10000000"
                                     min="0"
                                 />
@@ -146,7 +152,7 @@
                                     id="annualRate"
                                     value={annualRate}
                                     onChange={(e) => setAnnualRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 12"
                                     min="0"
                                     step="0.01"
@@ -161,7 +167,7 @@
                                     id="loanTermMonths"
                                     value={loanTermMonths}
                                     onChange={(e) => setLoanTermMonths(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 24 (para 2 años)"
                                     min="1"
                                 />
@@ -174,7 +180,7 @@
                                     id="frequency"
                                     value={frequency}
                                     onChange={(e) => setFrequency(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
                                 >
                                     <option value="monthly">Mensual</option>
                                     <option value="bimestral">Bimestral</option>
@@ -183,7 +189,7 @@
                                     <option value="anual">Anual</option>
                                 </select>
                             </div>
-                            {/* CAMPO SEGURO DE VIDA COMO PORCENTAJE */}
+                            {/* NUEVO CAMPO: Tasa de Seguro de Vida Anual como porcentaje */}
                             <div>
                                 <label htmlFor="lifeInsuranceRate" className="block text-gray-700 text-sm font-semibold mb-2">
                                     Tasa de Seguro de Vida Anual (%)
@@ -193,7 +199,7 @@
                                     id="lifeInsuranceRate"
                                     value={lifeInsuranceRate}
                                     onChange={(e) => setLifeInsuranceRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 0.065 (para 0.065%)"
                                     min="0"
                                     step="0.001"
@@ -213,7 +219,7 @@
 
                         {/* Display del resultado de la cuota */}
                         {installment !== null && !error && (
-                            <div className="mt-6 bg-orange-600 text-white p-5 rounded-xl text-center shadow-lg">
+                            <div className="mt-6 bg-blue-600 text-white p-5 rounded-xl text-center shadow-lg">
                                 <p className="text-sm font-light mb-1">Tu cuota total estimada es:</p>
                                 <p className="text-4xl font-extrabold">
                                     ${new Intl.NumberFormat('es-CO').format(installment)}

@@ -6,19 +6,20 @@
     <title>Simulador de Crédito</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // Tu código React va aquí, sin el 'export default App;'
+        // Tu código React va aquí
         const App = () => {
             const [principal, setPrincipal] = React.useState('');
             const [annualRate, setAnnualRate] = React.useState('');
             const [loanTermMonths, setLoanTermMonths] = React.useState('');
             const [frequency, setFrequency] = React.useState('monthly');
+            const [lifeInsuranceRate, setLifeInsuranceRate] = React.useState(''); // CAMBIO: Ahora es 'lifeInsuranceRate' (porcentaje)
             const [installment, setInstallment] = React.useState(null);
             const [error, setError] = React.useState('');
 
@@ -42,6 +43,8 @@
                 const parsedPrincipal = parseFloat(principal);
                 const parsedAnnualRate = parseFloat(annualRate);
                 const parsedLoanTermMonths = parseFloat(loanTermMonths);
+                // CAMBIO: Parsear la tasa de seguro y convertirla a decimal
+                const parsedLifeInsuranceRate = parseFloat(lifeInsuranceRate || 0) / 100; 
 
                 if (isNaN(parsedPrincipal) || isNaN(parsedAnnualRate) || isNaN(parsedLoanTermMonths) ||
                     parsedPrincipal <= 0 || parsedAnnualRate < 0 || parsedLoanTermMonths <= 0) {
@@ -50,30 +53,42 @@
                     }
                     return;
                 }
+                // Nueva validación para la tasa de seguro
+                if (isNaN(parsedLifeInsuranceRate) || parsedLifeInsuranceRate < 0) {
+                    setError('La tasa del seguro de vida debe ser un número positivo o cero.');
+                    return;
+                }
+
 
                 let ratePerPeriod;
                 let totalPeriods;
+                let insuranceDivider; // Para ajustar el seguro por periodo
 
                 switch (frequency) {
                     case 'monthly':
                         ratePerPeriod = (parsedAnnualRate / 12) / 100;
                         totalPeriods = parsedLoanTermMonths;
+                        insuranceDivider = 12; // Seguro anual / 12 para mensual
                         break;
                     case 'bimestral':
                         ratePerPeriod = (parsedAnnualRate / 6) / 100;
                         totalPeriods = parsedLoanTermMonths / 2;
+                        insuranceDivider = 6; // Seguro anual / 6 para bimestral
                         break;
                     case 'trimestral':
                         ratePerPeriod = (parsedAnnualRate / 4) / 100;
                         totalPeriods = parsedLoanTermMonths / 3;
+                        insuranceDivider = 4; // Seguro anual / 4 para trimestral
                         break;
                     case 'semestral':
                         ratePerPeriod = (parsedAnnualRate / 2) / 100;
                         totalPeriods = parsedLoanTermMonths / 6;
+                        insuranceDivider = 2; // Seguro anual / 2 para semestral
                         break;
                     case 'anual':
                         ratePerPeriod = (parsedAnnualRate / 1) / 100;
                         totalPeriods = parsedLoanTermMonths / 12;
+                        insuranceDivider = 1; // Seguro anual / 1 para anual
                         break;
                     default:
                         setError('Frecuencia de pago no válida.');
@@ -85,15 +100,21 @@
                      return;
                 }
 
-                const calculated = calculateInstallment(parsedPrincipal, ratePerPeriod, totalPeriods);
-                setInstallment(calculated);
+                const calculatedLoanInstallment = calculateInstallment(parsedPrincipal, ratePerPeriod, totalPeriods);
+                
+                // CALCULO DEL SEGURO DE VIDA: Porcentaje * Principal / Divisor por Frecuencia
+                const costLifeInsurance = (parsedLifeInsuranceRate * parsedPrincipal) / insuranceDivider;
 
-            }, [principal, annualRate, loanTermMonths, frequency]);
+                const totalInstallment = calculatedLoanInstallment + costLifeInsurance;
+
+                setInstallment(Math.round(totalInstallment)); // Redondear el total final
+
+            }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceRate]); // CAMBIO: 'lifeInsuranceRate' en las dependencias
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 font-sans antialiased">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-blue-200">
-                        <h1 className="text-3xl font-bold text-center text-blue-800 mb-6">
+                <div className="min-h-screen bg-gradient-to-br from-green-100 to-orange-200 flex items-center justify-center p-4 font-sans antialiased">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-green-200">
+                        <h1 className="text-3xl font-bold text-center text-green-800 mb-6">
                             Simulador de Crédito
                         </h1>
                         <div className="space-y-4">
@@ -106,7 +127,7 @@
                                     id="principal"
                                     value={principal}
                                     onChange={(e) => setPrincipal(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 10000000"
                                     min="0"
                                 />
@@ -120,7 +141,7 @@
                                     id="annualRate"
                                     value={annualRate}
                                     onChange={(e) => setAnnualRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 12"
                                     min="0"
                                     step="0.01"
@@ -135,7 +156,7 @@
                                     id="loanTermMonths"
                                     value={loanTermMonths}
                                     onChange={(e) => setLoanTermMonths(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus="ring-green-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 24 (para 2 años)"
                                     min="1"
                                 />
@@ -148,7 +169,7 @@
                                     id="frequency"
                                     value={frequency}
                                     onChange={(e) => setFrequency(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
                                 >
                                     <option value="monthly">Mensual</option>
                                     <option value="bimestral">Bimestral</option>
@@ -157,15 +178,38 @@
                                     <option value="anual">Anual</option>
                                 </select>
                             </div>
+                            {/* CAMPO SEGURO DE VIDA POR PORCENTAJE */}
+                            <div>
+                                <label htmlFor="lifeInsuranceRate" className="block text-gray-700 text-sm font-semibold mb-2">
+                                    Tasa de Seguro de Vida Anual (%)
+                                </label>
+                                <input
+                                    type="number"
+                                    id="lifeInsuranceRate"
+                                    value={lifeInsuranceRate}
+                                    onChange={(e) => setLifeInsuranceRate(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                                    placeholder="Ej: 0.065 (para 0.065%)"
+                                    min="0"
+                                    step="0.001"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Ingresa el porcentaje anual (ej: 0.065 para 0.065%). Se aplicará al monto del préstamo.
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Error display */}
                         {error && (
                             <div className="mt-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
                                 {error}
                             </div>
                         )}
+
+                        {/* Installment display */}
                         {installment !== null && !error && (
-                            <div className="mt-6 bg-blue-600 text-white p-5 rounded-xl text-center shadow-lg">
-                                <p className="text-sm font-light mb-1">Tu cuota estimada es:</p>
+                            <div className="mt-6 bg-orange-600 text-white p-5 rounded-xl text-center shadow-lg">
+                                <p className="text-sm font-light mb-1">Tu cuota total estimada es:</p>
                                 <p className="text-4xl font-extrabold">
                                     ${new Intl.NumberFormat('es-CO').format(installment)}
                                 </p>
@@ -175,8 +219,15 @@
                                     frequency === 'trimestral' ? 'tres meses' :
                                     frequency === 'semestral' ? 'seis meses' : 'año'})
                                 </p>
+                                {parseFloat(lifeInsuranceRate || 0) > 0 && (
+                                    <p className="text-xs mt-2 opacity-80">
+                                        Incluye seguro de vida.
+                                    </p>
+                                )}
                             </div>
                         )}
+
+                        {/* Information text */}
                         <p className="mt-8 text-xs text-gray-500 text-center">
                             Este simulador proporciona una estimación. Las cuotas reales pueden variar ligeramente debido a factores adicionales o métodos de cálculo específicos de cada entidad financiera.
                         </p>
@@ -187,6 +238,6 @@
 
         // Renderiza la aplicación React en el elemento con id="root"
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-</body>
-</html>
+            </script>
+        </body>
+        </html>

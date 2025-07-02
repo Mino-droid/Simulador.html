@@ -5,258 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de Crédito</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react">
         const App = () => {
-            const [principal, setPrincipal] = React.useState('');
-            const [annualRate, setAnnualRate] = React.useState('');
-            const [loanTermMonths, setLoanTermMonths] = React.useState('');
+            const [principal, setPrincipal] = React.useState(10000000);
+            const [annualRate, setAnnualRate] = React.useState(12);
+            const [loanTermMonths, setLoanTermMonths] = React.useState(24);
             const [frequency, setFrequency] = React.useState('monthly');
-            const [lifeInsuranceMonthly, setLifeInsuranceMonthly] = React.useState('');
+            const [lifeInsuranceMonthly, setLifeInsuranceMonthly] = React.useState(15000);
             const [installment, setInstallment] = React.useState(null);
             const [error, setError] = React.useState('');
             const [loanPart, setLoanPart] = React.useState(0);
             const [insurancePart, setInsurancePart] = React.useState(0);
 
             const calculateInstallment = (p, r, n) => {
-                if (p <= 0 || r < 0 || n <= 0) {
-                    return 0;
-                }
-                if (r === 0) {
-                    return Math.round(p / n);
-                }
-                const numerator = r * Math.pow(1 + r, n);
-                const denominator = Math.pow(1 + r, n) - 1;
-                const payment = p * (numerator / denominator);
-                return Math.round(payment);
+                if (p <= 0 || r < 0 || n <= 0) return 0;
+                if (r === 0) return Math.round(p / n);
+                return Math.round(p * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
             };
 
             React.useEffect(() => {
-                setError('');
-                setInstallment(null);
+                try {
+                    const p = Number(principal);
+                    const r = Number(annualRate);
+                    const m = Number(loanTermMonths);
+                    const ins = Number(lifeInsuranceMonthly) || 0;
 
-                const parsedPrincipal = parseFloat(principal);
-                const parsedAnnualRate = parseFloat(annualRate);
-                const parsedLoanTermMonths = parseFloat(loanTermMonths);
-                const parsedLifeInsurance = parseFloat(lifeInsuranceMonthly || 0);
-
-                // Validaciones
-                if (isNaN(parsedPrincipal) {
-                    if (principal) setError('Ingresa un monto de préstamo válido.');
-                    return;
-                }
-                if (parsedPrincipal <= 0) {
-                    if (principal) setError('El monto debe ser positivo.');
-                    return;
-                }
-                if (isNaN(parsedAnnualRate) {
-                    if (annualRate) setError('Ingresa una tasa de interés válida.');
-                    return;
-                }
-                if (parsedAnnualRate < 0) {
-                    if (annualRate) setError('La tasa no puede ser negativa.');
-                    return;
-                }
-                if (isNaN(parsedLoanTermMonths)) {
-                    if (loanTermMonths) setError('Ingresa un plazo válido.');
-                    return;
-                }
-                if (parsedLoanTermMonths <= 0) {
-                    if (loanTermMonths) setError('El plazo debe ser positivo.');
-                    return;
-                }
-                if (isNaN(parsedLifeInsurance)) {
-                    if (lifeInsuranceMonthly) setError('Ingresa un valor de seguro válido.');
-                    return;
-                }
-                if (parsedLifeInsurance < 0) {
-                    if (lifeInsuranceMonthly) setError('El seguro no puede ser negativo.');
-                    return;
-                }
-
-                let ratePerPeriod;
-                let totalPeriods;
-                let insuranceMultiplier = 1;
-
-                switch (frequency) {
-                    case 'monthly':
-                        ratePerPeriod = (parsedAnnualRate / 12) / 100;
-                        totalPeriods = parsedLoanTermMonths;
-                        insuranceMultiplier = 1;
-                        break;
-                    case 'bimestral':
-                        ratePerPeriod = (parsedAnnualRate / 6) / 100;
-                        totalPeriods = parsedLoanTermMonths / 2;
-                        insuranceMultiplier = 2;
-                        break;
-                    case 'trimestral':
-                        ratePerPeriod = (parsedAnnualRate / 4) / 100;
-                        totalPeriods = parsedLoanTermMonths / 3;
-                        insuranceMultiplier = 3;
-                        break;
-                    case 'semestral':
-                        ratePerPeriod = (parsedAnnualRate / 2) / 100;
-                        totalPeriods = parsedLoanTermMonths / 6;
-                        insuranceMultiplier = 6;
-                        break;
-                    case 'anual':
-                        ratePerPeriod = (parsedAnnualRate / 1) / 100;
-                        totalPeriods = parsedLoanTermMonths / 12;
-                        insuranceMultiplier = 12;
-                        break;
-                    default:
-                        setError('Frecuencia no válida.');
+                    if (p <= 0 || r < 0 || m <= 0 || ins < 0) {
+                        setError('Todos los valores deben ser positivos');
                         return;
+                    }
+
+                    let rate, periods, multiplier;
+                    switch(frequency) {
+                        case 'monthly': rate = r/1200; periods = m; multiplier = 1; break;
+                        case 'bimestral': rate = r/600; periods = m/2; multiplier = 2; break;
+                        case 'trimestral': rate = r/400; periods = m/3; multiplier = 3; break;
+                        case 'semestral': rate = r/200; periods = m/6; multiplier = 6; break;
+                        case 'anual': rate = r/100; periods = m/12; multiplier = 12; break;
+                        default: setError('Frecuencia inválida'); return;
+                    }
+
+                    if (!Number.isInteger(periods)) {
+                        setError('El plazo no coincide con la frecuencia');
+                        return;
+                    }
+
+                    const loan = calculateInstallment(p, rate, periods);
+                    const insurance = ins * multiplier;
+                    
+                    setLoanPart(loan);
+                    setInsurancePart(insurance);
+                    setInstallment(loan + insurance);
+                    setError('');
+                } catch (e) {
+                    setError('Error en los cálculos');
                 }
-
-                if (totalPeriods <= 0 || totalPeriods % 1 !== 0) {
-                     setError('El plazo no es compatible con la frecuencia seleccionada.');
-                     return;
-                }
-
-                const calculatedLoanInstallment = calculateInstallment(parsedPrincipal, ratePerPeriod, totalPeriods);
-                const calculatedInsurance = parsedLifeInsurance * insuranceMultiplier;
-                const totalInstallment = calculatedLoanInstallment + calculatedInsurance;
-
-                setLoanPart(calculatedLoanInstallment);
-                setInsurancePart(calculatedInsurance);
-                setInstallment(Math.round(totalInstallment));
             }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceMonthly]);
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 font-sans antialiased">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-blue-200">
-                        <h1 className="text-3xl font-bold text-center text-blue-800 mb-6">
-                            Simulador de Crédito
-                        </h1>
-                        <div className="space-y-4">
+                <div className="min-h-screen bg-blue-50 flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded-xl shadow-md max-w-md w-full">
+                        <h1 className="text-2xl font-bold text-center text-blue-800 mb-4">Simulador de Crédito</h1>
+                        
+                        <div className="space-y-3">
+                            <Input label="Monto del préstamo ($)" value={principal} onChange={setPrincipal} />
+                            <Input label="Tasa de interés anual (%)" value={annualRate} onChange={setAnnualRate} step="0.1" />
+                            <Input label="Plazo (meses)" value={loanTermMonths} onChange={setLoanTermMonths} />
+                            
                             <div>
-                                <label htmlFor="principal" className="block text-gray-700 text-sm font-semibold mb-2">
-                                    Monto del Préstamo ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="principal"
-                                    value={principal}
-                                    onChange={(e) => setPrincipal(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                                    placeholder="Ej: 10000000"
-                                    min="0"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="annualRate" className="block text-gray-700 text-sm font-semibold mb-2">
-                                    Tasa de Interés Anual (%)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="annualRate"
-                                    value={annualRate}
-                                    onChange={(e) => setAnnualRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                                    placeholder="Ej: 12"
-                                    min="0"
-                                    step="0.01"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="loanTermMonths" className="block text-gray-700 text-sm font-semibold mb-2">
-                                    Plazo del Préstamo (Meses)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="loanTermMonths"
-                                    value={loanTermMonths}
-                                    onChange={(e) => setLoanTermMonths(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                                    placeholder="Ej: 24 (para 2 años)"
-                                    min="1"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="frequency" className="block text-gray-700 text-sm font-semibold mb-2">
-                                    Frecuencia de Pago
-                                </label>
-                                <select
-                                    id="frequency"
+                                <label className="block text-sm font-medium mb-1">Frecuencia de pago</label>
+                                <select 
+                                    className="w-full p-2 border rounded"
                                     value={frequency}
                                     onChange={(e) => setFrequency(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
                                 >
-                                    <option value="monthly">Mensual</option>
-                                    <option value="bimestral">Bimestral</option>
-                                    <option value="trimestral">Trimestral</option>
-                                    <option value="semestral">Semestral</option>
-                                    <option value="anual">Anual</option>
+                                    {['monthly','bimestral','trimestral','semestral','anual'].map(opt => (
+                                        <option key={opt} value={opt}>
+                                            {opt === 'monthly' ? 'Mensual' :
+                                             opt === 'bimestral' ? 'Bimestral' :
+                                             opt === 'trimestral' ? 'Trimestral' :
+                                             opt === 'semestral' ? 'Semestral' : 'Anual'}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
-                            <div>
-                                <label htmlFor="lifeInsuranceMonthly" className="block text-gray-700 text-sm font-semibold mb-2">
-                                    Seguro de Vida Mensual ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="lifeInsuranceMonthly"
-                                    value={lifeInsuranceMonthly}
-                                    onChange={(e) => setLifeInsuranceMonthly(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                                    placeholder="Ej: 15000"
-                                    min="0"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Valor fijo mensual que se sumará a cada cuota (se ajusta según frecuencia).
-                                </p>
-                            </div>
+                            
+                            <Input label="Seguro de vida mensual ($)" value={lifeInsuranceMonthly} onChange={setLifeInsuranceMonthly} />
                         </div>
 
-                        {error && (
-                            <div className="mt-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
-                                {error}
-                            </div>
-                        )}
+                        {error && <div className="mt-4 p-2 bg-red-100 text-red-700 rounded text-sm">{error}</div>}
 
                         {installment !== null && !error && (
-                            <div className="mt-6 bg-blue-600 text-white p-5 rounded-xl text-center shadow-lg">
-                                <p className="text-sm font-light mb-1">Tu cuota total estimada es:</p>
-                                <p className="text-4xl font-extrabold">
-                                    ${new Intl.NumberFormat('es-CO').format(installment)}
-                                </p>
-                                
-                                <div className="mt-3 text-left bg-blue-700 p-3 rounded-lg text-sm">
+                            <div className="mt-4 bg-blue-100 p-4 rounded-lg">
+                                <div className="text-center mb-2">
+                                    <span className="text-sm">Cuota {{
+                                        monthly: 'mensual',
+                                        bimestral: 'bimestral',
+                                        trimestral: 'trimestral',
+                                        semestral: 'semestral',
+                                        anual: 'anual'
+                                    }[frequency]}:</span>
+                                    <div className="text-2xl font-bold">${installment.toLocaleString()}</div>
+                                </div>
+                                <div className="text-sm">
                                     <div className="flex justify-between">
-                                        <span>Cuota principal:</span>
-                                        <span>${new Intl.NumberFormat('es-CO').format(loanPart)}</span>
+                                        <span>Capital + intereses:</span>
+                                        <span>${loanPart.toLocaleString()}</span>
                                     </div>
                                     {insurancePart > 0 && (
-                                        <div className="flex justify-between mt-1">
+                                        <div className="flex justify-between">
                                             <span>Seguro de vida:</span>
-                                            <span>${new Intl.NumberFormat('es-CO').format(insurancePart)}</span>
+                                            <span>${insurancePart.toLocaleString()}</span>
                                         </div>
                                     )}
                                 </div>
-                                
-                                <p className="text-sm font-light mt-2">
-                                    (cada {frequency === 'monthly' ? 'mes' :
-                                    frequency === 'bimestral' ? 'dos meses' :
-                                    frequency === 'trimestral' ? 'tres meses' :
-                                    frequency === 'semestral' ? 'seis meses' : 'año'})
-                                </p>
                             </div>
                         )}
-
-                        <p className="mt-8 text-xs text-gray-500 text-center">
-                            Este simulador proporciona una estimación. Las cuotas reales pueden variar según políticas de la entidad financiera.
-                        </p>
                     </div>
                 </div>
             );
         };
+
+        const Input = ({ label, value, onChange, ...props }) => (
+            <div>
+                <label className="block text-sm font-medium mb-1">{label}</label>
+                <input
+                    type="number"
+                    className="w-full p-2 border rounded"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    min="0"
+                    {...props}
+                />
+            </div>
+        );
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>

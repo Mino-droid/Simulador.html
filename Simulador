@@ -19,7 +19,7 @@
             const [annualRate, setAnnualRate] = React.useState('');
             const [loanTermMonths, setLoanTermMonths] = React.useState('');
             const [frequency, setFrequency] = React.useState('monthly');
-            const [lifeInsuranceRate, setLifeInsuranceRate] = React.useState(''); // CAMBIO: Ahora es 'lifeInsuranceRate' (porcentaje)
+            const [lifeInsuranceRate, setLifeInsuranceRate] = React.useState(''); // Estado para la tasa de seguro (ej. 0.065)
             const [installment, setInstallment] = React.useState(null);
             const [error, setError] = React.useState('');
 
@@ -27,7 +27,7 @@
                 if (p <= 0 || r < 0 || n <= 0) {
                     return 0;
                 }
-                if (r === 0) {
+                if (r === 0) { // Manejar el caso de tasa de interés 0
                     return Math.round(p / n);
                 }
                 const numerator = r * Math.pow(1 + r, n);
@@ -43,78 +43,83 @@
                 const parsedPrincipal = parseFloat(principal);
                 const parsedAnnualRate = parseFloat(annualRate);
                 const parsedLoanTermMonths = parseFloat(loanTermMonths);
-                // CAMBIO: Parsear la tasa de seguro y convertirla a decimal
-                const parsedLifeInsuranceRate = parseFloat(lifeInsuranceRate || 0) / 100; 
+                // Convertir la tasa de seguro a decimal. Si no hay valor, asumimos 0.
+                const parsedLifeInsuranceRate = parseFloat(lifeInsuranceRate || 0) / 100; // Dividir por 100 para convertir 0.065 en 0.00065
 
+                // --- Validaciones de entrada ---
                 if (isNaN(parsedPrincipal) || isNaN(parsedAnnualRate) || isNaN(parsedLoanTermMonths) ||
                     parsedPrincipal <= 0 || parsedAnnualRate < 0 || parsedLoanTermMonths <= 0) {
-                    if (principal || annualRate || loanTermMonths) {
+                    if (principal || annualRate || loanTermMonths) { // Solo mostrar error si hay algo escrito
                          setError('Por favor, ingresa valores válidos y positivos para el monto, la tasa y el plazo.');
                     }
                     return;
                 }
-                // Nueva validación para la tasa de seguro
                 if (isNaN(parsedLifeInsuranceRate) || parsedLifeInsuranceRate < 0) {
                     setError('La tasa del seguro de vida debe ser un número positivo o cero.');
                     return;
                 }
 
-
                 let ratePerPeriod;
                 let totalPeriods;
-                let insuranceDivider; // Para ajustar el seguro por periodo
+                let insuranceDivider; // Divisor para ajustar la tasa anual del seguro a la frecuencia de pago
 
+                // --- Lógica de cálculo basada en la frecuencia ---
                 switch (frequency) {
                     case 'monthly':
                         ratePerPeriod = (parsedAnnualRate / 12) / 100;
                         totalPeriods = parsedLoanTermMonths;
-                        insuranceDivider = 12; // Seguro anual / 12 para mensual
+                        insuranceDivider = 12; // 12 meses en un año
                         break;
                     case 'bimestral':
                         ratePerPeriod = (parsedAnnualRate / 6) / 100;
                         totalPeriods = parsedLoanTermMonths / 2;
-                        insuranceDivider = 6; // Seguro anual / 6 para bimestral
+                        insuranceDivider = 6; // 6 bimestres en un año
                         break;
                     case 'trimestral':
                         ratePerPeriod = (parsedAnnualRate / 4) / 100;
                         totalPeriods = parsedLoanTermMonths / 3;
-                        insuranceDivider = 4; // Seguro anual / 4 para trimestral
+                        insuranceDivider = 4; // 4 trimestres en un año
                         break;
                     case 'semestral':
                         ratePerPeriod = (parsedAnnualRate / 2) / 100;
                         totalPeriods = parsedLoanTermMonths / 6;
-                        insuranceDivider = 2; // Seguro anual / 2 para semestral
+                        insuranceDivider = 2; // 2 semestres en un año
                         break;
                     case 'anual':
                         ratePerPeriod = (parsedAnnualRate / 1) / 100;
                         totalPeriods = parsedLoanTermMonths / 12;
-                        insuranceDivider = 1; // Seguro anual / 1 para anual
+                        insuranceDivider = 1; // 1 año en un año
                         break;
                     default:
                         setError('Frecuencia de pago no válida.');
                         return;
                 }
 
+                // Validar que el número de periodos sea un número entero y positivo
                 if (totalPeriods <= 0 || totalPeriods % 1 !== 0) {
-                     setError('El plazo del préstamo no es compatible con la frecuencia de pago seleccionada. Asegúrate de que los meses sean divisibles por la frecuencia (ej: para bimestral, plazo par).');
+                     setError('El plazo del préstamo no es compatible con la frecuencia de pago seleccionada. Asegúrate de que los meses sean divisibles por la frecuencia (ej: para bimestral, el plazo en meses debe ser par).');
                      return;
                 }
 
+                // Calcular la cuota del préstamo principal
                 const calculatedLoanInstallment = calculateInstallment(parsedPrincipal, ratePerPeriod, totalPeriods);
                 
-                // CALCULO DEL SEGURO DE VIDA: Porcentaje * Principal / Divisor por Frecuencia
-                const costLifeInsurance = (parsedLifeInsuranceRate * parsedPrincipal) / insuranceDivider;
+                // Calcular el costo del seguro de vida por periodo
+                // (Tasa de Seguro Anual * Monto Principal) / (Número de periodos de seguro en un año)
+                const costLifeInsurancePerPeriod = (parsedLifeInsuranceRate * parsedPrincipal) / insuranceDivider;
 
-                const totalInstallment = calculatedLoanInstallment + costLifeInsurance;
+                // Sumar la cuota del préstamo y el costo del seguro
+                const totalInstallment = calculatedLoanInstallment + costLifeInsurancePerPeriod;
 
                 setInstallment(Math.round(totalInstallment)); // Redondear el total final
 
-            }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceRate]); // CAMBIO: 'lifeInsuranceRate' en las dependencias
+            }, [principal, annualRate, loanTermMonths, frequency, lifeInsuranceRate]); // Dependencias para recalcular
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-green-100 to-orange-200 flex items-center justify-center p-4 font-sans antialiased">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-green-200">
-                        <h1 className="text-3xl font-bold text-center text-green-800 mb-6">
+                // --- Colores Verde y Naranja ---
+                <div className="min-h-screen bg-gradient-to-br from-emerald-100 to-orange-200 flex items-center justify-center p-4 font-sans antialiased">
+                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-emerald-300">
+                        <h1 className="text-3xl font-bold text-center text-emerald-800 mb-6">
                             Simulador de Crédito
                         </h1>
                         <div className="space-y-4">
@@ -127,7 +132,7 @@
                                     id="principal"
                                     value={principal}
                                     onChange={(e) => setPrincipal(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 10000000"
                                     min="0"
                                 />
@@ -141,7 +146,7 @@
                                     id="annualRate"
                                     value={annualRate}
                                     onChange={(e) => setAnnualRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 12"
                                     min="0"
                                     step="0.01"
@@ -156,7 +161,7 @@
                                     id="loanTermMonths"
                                     value={loanTermMonths}
                                     onChange={(e) => setLoanTermMonths(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus="ring-green-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 24 (para 2 años)"
                                     min="1"
                                 />
@@ -169,7 +174,7 @@
                                     id="frequency"
                                     value={frequency}
                                     onChange={(e) => setFrequency(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200 appearance-none bg-white pr-8"
                                 >
                                     <option value="monthly">Mensual</option>
                                     <option value="bimestral">Bimestral</option>
@@ -178,7 +183,7 @@
                                     <option value="anual">Anual</option>
                                 </select>
                             </div>
-                            {/* CAMPO SEGURO DE VIDA POR PORCENTAJE */}
+                            {/* CAMPO SEGURO DE VIDA COMO PORCENTAJE */}
                             <div>
                                 <label htmlFor="lifeInsuranceRate" className="block text-gray-700 text-sm font-semibold mb-2">
                                     Tasa de Seguro de Vida Anual (%)
@@ -188,25 +193,25 @@
                                     id="lifeInsuranceRate"
                                     value={lifeInsuranceRate}
                                     onChange={(e) => setLifeInsuranceRate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition duration-200"
                                     placeholder="Ej: 0.065 (para 0.065%)"
                                     min="0"
                                     step="0.001"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Ingresa el porcentaje anual (ej: 0.065 para 0.065%). Se aplicará al monto del préstamo.
+                                    Ingresa el porcentaje anual del seguro (ej: `0.065` para 0.065%).
                                 </p>
                             </div>
                         </div>
 
-                        {/* Error display */}
+                        {/* Display de errores */}
                         {error && (
                             <div className="mt-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm text-center">
                                 {error}
                             </div>
                         )}
 
-                        {/* Installment display */}
+                        {/* Display del resultado de la cuota */}
                         {installment !== null && !error && (
                             <div className="mt-6 bg-orange-600 text-white p-5 rounded-xl text-center shadow-lg">
                                 <p className="text-sm font-light mb-1">Tu cuota total estimada es:</p>
@@ -227,7 +232,7 @@
                             </div>
                         )}
 
-                        {/* Information text */}
+                        {/* Nota informativa */}
                         <p className="mt-8 text-xs text-gray-500 text-center">
                             Este simulador proporciona una estimación. Las cuotas reales pueden variar ligeramente debido a factores adicionales o métodos de cálculo específicos de cada entidad financiera.
                         </p>

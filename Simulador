@@ -14,13 +14,30 @@
 
     <script type="text/babel">
         const App = () => {
+            // --- Estado para la clave de acceso ---
+            const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+            const [passwordInput, setPasswordInput] = React.useState('');
+            const [passwordError, setPasswordError] = React.useState('');
+            const CORRECT_PASSWORD = "utrahuilca.123"; // <-- ¡CAMBIA ESTO POR TU CLAVE DESEADA!
+
+            // Estados existentes del simulador
             const [montoSolicitado, setMontoSolicitado] = React.useState('');
             const [tasaEfectivaAnual, setTasaEfectivaAnual] = React.useState('');
             const [plazoMeses, setPlazoMeses] = React.useState('');
             const [frecuenciaAmortizacion, setFrecuenciaAmortizacion] = React.useState('mensual');
-            const [tasaSeguroVidaAnual, setTasaSeguroVidaAnual] = React.useState(''); // Campo del seguro de vida
+            const [tasaSeguroVidaAnual, setTasaSeguroVidaAnual] = React.useState('');
             const [cuotaTotal, setCuotaTotal] = React.useState(null);
             const [error, setError] = React.useState('');
+
+            // Función para manejar el intento de inicio de sesión
+            const handleLogin = () => {
+                if (passwordInput === CORRECT_PASSWORD) {
+                    setIsAuthenticated(true);
+                    setPasswordError('');
+                } else {
+                    setPasswordError('Clave incorrecta. Inténtalo de nuevo.');
+                }
+            };
 
             const calcularCuotaPrestamo = (p, r, n) => {
                 if (p <= 0 || r < 0 || n <= 0) return 0;
@@ -31,6 +48,9 @@
             };
 
             React.useEffect(() => {
+                // Solo calcular si el usuario está autenticado
+                if (!isAuthenticated) return;
+
                 setError('');
                 setCuotaTotal(null);
 
@@ -39,7 +59,7 @@
                 const parsedPlazoMeses = parseFloat(plazoMeses);
                 const parsedTasaSeguroVidaAnual = parseFloat(tasaSeguroVidaAnual || 0) / 100;
 
-                // Validaciones mínimas para evitar NaN o cálculos erróneos
+                // Validaciones mínimas
                 if (isNaN(parsedMontoSolicitado) || isNaN(parsedTasaEfectivaAnual) || isNaN(parsedPlazoMeses) || parsedMontoSolicitado <= 0 || parsedPlazoMeses <= 0) {
                     if (montoSolicitado || tasaEfectivaAnual || plazoMeses) setError('Ingresa valores válidos para Monto, Tasa y Plazo.');
                     return;
@@ -51,7 +71,7 @@
 
                 let tasaPorPeriodo;
                 let numeroTotalPeriodos;
-                let divisorSeguroVida; 
+                let divisorSeguroVida;
 
                 switch (frecuenciaAmortizacion) {
                     case 'mensual':
@@ -94,8 +114,39 @@
                 const totalCalculado = cuotaSoloPrestamo + costoSeguroVidaPorPeriodo;
 
                 setCuotaTotal(Math.round(totalCalculado));
-            }, [montoSolicitado, tasaEfectivaAnual, plazoMeses, frecuenciaAmortizacion, tasaSeguroVidaAnual]);
+            }, [montoSolicitado, tasaEfectivaAnual, plazoMeses, frecuenciaAmortizacion, tasaSeguroVidaAnual, isAuthenticated]);
 
+            // --- Renderizado condicional basado en la autenticación ---
+            if (!isAuthenticated) {
+                return (
+                    <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+                        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm text-center">
+                            <h2 class="text-2xl font-bold mb-6 text-gray-800">Acceso al Simulador</h2>
+                            <p class="text-sm text-gray-600 mb-4">Ingresa la clave para continuar.</p>
+                            <input
+                                type="password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                onKeyPress={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                                class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Clave de acceso"
+                            />
+                            <button
+                                onClick={handleLogin}
+                                class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-200"
+                            >
+                                Ingresar
+                            </button>
+                            {passwordError && <p class="text-red-500 text-sm mt-3">{passwordError}</p>}
+                            <p class="text-xs text-gray-400 mt-6">
+                                Aviso: Esta clave es solo para un acceso básico y no ofrece seguridad real.
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Si está autenticado, muestra el simulador normal
             return (
                 <div class="max-w-md mx-auto p-4 border rounded shadow-lg bg-white">
                     <h1 class="text-2xl font-bold mb-4 text-center">Simulador de Crédito</h1>
@@ -126,7 +177,6 @@
                         </select>
                     </div>
 
-                    {/* Campo del Seguro de Vida - AQUÍ ESTÁ */}
                     <div class="mb-3">
                         <label class="block text-sm font-semibold mb-1">Tasa de Seguro de Vida Anual (%)</label>
                         <input type="number" value={tasaSeguroVidaAnual} onChange={(e) => setTasaSeguroVidaAnual(e.target.value)} class="w-full p-2 border rounded" placeholder="Ej: 0.065 (para 0.065%)" min="0" step="0.001" />
@@ -136,9 +186,9 @@
                     {error && <p class="text-red-500 text-sm mt-3">{error}</p>}
 
                     {cuotaTotal !== null && !error && (
-                        <div class="mt-4 p-4 bg-blue-100 border border-blue-300 rounded text-center">
-                            <p class="text-lg font-bold">Cuota Total Estimada:</p>
-                            <p class="text-3xl font-extrabold text-blue-700 mt-2">${new Intl.NumberFormat('es-CO').format(cuotaTotal)}</p>
+                        <div class="mt-4 p-4 bg-green-100 border border-green-300 rounded text-center">
+                            <p class="text-lg font-bold text-green-700">Cuota Total Estimada:</p>
+                            <p class="text-3xl font-extrabold text-green-700 mt-2">${new Intl.NumberFormat('es-CO').format(cuotaTotal)}</p>
                             <p class="text-sm text-gray-600 mt-1">(cada {frecuenciaAmortizacion === 'mensual' ? 'mes' :
                                     frecuenciaAmortizacion === 'bimestral' ? 'dos meses' :
                                     frecuenciaAmortizacion === 'trimestral' ? 'tres meses' :

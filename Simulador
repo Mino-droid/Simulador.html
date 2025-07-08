@@ -20,7 +20,7 @@
             const [plazoMeses, setPlazoMeses] = React.useState('');
             const [frecuenciaAmortizacion, setFrecuenciaAmortizacion] = React.useState('mensual');
             const [tasaSeguroVidaAnual, setTasaSeguroVidaAnual] = React.useState('');
-            
+
             // Estados para el resultado y errores
             const [cuotaTotal, setCuotaTotal] = React.useState(null);
             const [error, setError] = React.useState('');
@@ -56,7 +56,7 @@
                 const parsedTasaEfectivaAnual = parseFloat(tasaEfectivaAnual);
                 const parsedPlazoMeses = parseFloat(plazoMeses);
                 // Convertir la tasa de seguro (ej. 0.065) a su valor decimal real (0.00065)
-                const parsedTasaSeguroVidaAnual = parseFloat(tasaSeguroVidaAnual || 0) / 100; 
+                const parsedTasaSeguroVidaAnual = parseFloat(tasaSeguroVidaAnual || 0) / 100;
 
                 // --- Validaciones de campos de entrada ---
                 if (isNaN(parsedMontoSolicitado) || parsedMontoSolicitado <= 0) {
@@ -114,13 +114,13 @@
 
                 // Validar que el número de periodos resultante sea un número entero (no puedes pagar 12.5 cuotas)
                 if (numeroTotalPeriodos <= 0 || numeroTotalPeriodos % 1 !== 0) {
-                     setError('El plazo en meses no es compatible con la frecuencia de amortización seleccionada. Asegúrate de que el plazo sea divisible por la duración del periodo de pago.');
-                     return;
+                    setError('El plazo en meses no es compatible con la frecuencia de amortización seleccionada. Asegúrate de que el plazo sea divisible por la duración del periodo de pago.');
+                    return;
                 }
 
                 // 1. Calcular la cuota del préstamo principal (amortización)
                 const cuotaSoloPrestamo = calcularCuotaPrestamo(parsedMontoSolicitado, tasaPorPeriodo, numeroTotalPeriodos);
-                
+
                 // 2. Calcular el costo del seguro de vida por cada periodo de pago
                 // (Tasa de Seguro ANUAL * Monto Principal) / (Número de periodos de seguro en un año según frecuencia)
                 const costoSeguroVidaPorPeriodo = (parsedTasaSeguroVidaAnual * parsedMontoSolicitado) / divisorSeguroVida;
